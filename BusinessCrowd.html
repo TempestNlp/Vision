@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0"/>
+    <link rel="stylesheet" href="css/bootstrap.css"/>
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/popper.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <style>
+    	 /*********左边*begin************************/
+        .left-sec{
+            background-color: #0b2e13;
+            height:540px;
+        }
+        .right-sec{
+            background-color: #fafafa;
+        }
+        .userName{
+            color:white;
+            font-size: 0.9em;
+            font-family: 微软雅黑;
+            margin-left:20px;
+            position:absolute;
+            left:40px;
+        }
+        .userList{
+            color:white;
+            height:40px;
+            margin:15px 0px;
+            line-height: 40px;
+            border-top:1px solid white;
+            border-bottom:1px solid white;
+        }
+        .userItem{
+        	height:380px;
+        	overflow-y: scroll;
+        }
+        /*********左边*tail************************/
+
+        /*********右边*begin************************/
+        .right-tit{
+            border-bottom:1px solid #dee2e6;
+        }
+        .right-content{
+        	-webkit-box-flex: 1;
+        	height:400px;
+            overflow-y: scroll;
+            border-bottom:1px solid #dee2e6;
+        }
+        #dope{
+            height:70px;
+            margin-top:10px;
+        }
+        .sendBtn{
+            position: absolute;
+            right:20px;
+            bottom:10px;
+
+        }
+        /*********右边*tail************************/
+        /**************聊天文字头像**begin***************************/
+        .answHead{
+        	width: 44px;
+      		height: 44px;
+    		border-radius: 50%;
+    		margin-left: 15px;
+    		position:relative;
+        }
+        .answHead img{
+        	width: 44px;
+    		height: 44px;
+    		border-radius: 50%;
+        }
+        .answer{
+        	width: auto;
+    		height: 40px;
+   			background: #eeeeee;
+    		padding: 1px 20px;
+    		margin: 4px;
+    		line-height: 40px;
+    		font-size: 14px;
+    		border-radius: 10px;
+    		margin-left: 10px;
+        }  
+        /**************聊天文字头像**end***************************/    
+         ul{
+        	    list-style: none;
+    			margin: 0;
+    			padding: 0;
+        }
+        li{
+        	list-style:none;
+        	width: 100%;
+    	    height: 50px;
+    		margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+	<div class="container">
+        <div class="row m-md-3">
+            <div class="col-12 col-md-4 order-2 left-sec">
+                <div class="col-12 mt-3">
+                    <div class="answHead">
+                        <img src="./videos/images/touxiang1.png" id="headPortrait">
+                        <span class="userName" id="userName">小明</span>
+                    </div>
+                </div>
+
+                <div class="col-12 userList text-left">用户列表</div>
+
+                <div class="col-12 userItem" id="userItem">
+					<ul id="oldUserItem"></ul>
+                </div>
+            </div>
+            <div class="col-12 col-md-8 order-1 right-sec">
+                <div class="col-12 text-center pt-2 pb-2 right-tit">商业群</div>
+                <!--消息内容-->
+                <div class="col-12 right-content" id="right-content"><ul id="rightConList"></ul></div>
+                <!-- 输入框-->
+                <div class="col-12 right-input">
+                    <textarea id="dope" class="col-12" name="" rows="" cols=""></textarea>
+                    <button class= "btn btn-primary sendBtn" id="sendBtn">发送(s)</button>
+                </div>
+            </div>
+        </div>
+      </div>
+	<script>
+		const TYPE_ENTER = 0
+		const TYPE_LEAVE = 1
+		const TYPE_CHAT = 2
+		const SERVER_ADDR = "ws://localhost:3000";
+		//const SERVER_ADDR = "ws://19o6s39724.iask.in:38863";
+		var input = document.getElementById("dope");
+		var button = document.getElementById("sendBtn");
+		var panelList = document.getElementById("rightConList");
+		var panel = document.getElementById("right-content");
+		var userNameObj = document.getElementById("userName");
+		var headPortObj = document.getElementById("headPortrait");
+		var userListPanel = document.getElementById("userItem");
+		var oldItem = document.getElementById("oldUserItem");
+		//创建WebSocket
+		//参数：websocket服务器地址
+		var socket = new WebSocket(SERVER_ADDR);
+		//当与websocket服务连接成功时触发
+		socket.addEventListener("open",function(){
+			/*****************获取用户数据*begin*****************************/
+	   		 $.ajax({
+	   			  url:'ChatServlet',
+	   			  async: false,
+	   			  Type:'POST',
+	   			  dataType:'json',
+	   			  data:{},
+	   			  success:function(data){
+	   				 var headPort = document.getElementById("#headPortrait");
+	   				 var userName = document.getElementById("#userName");
+	   				 //设置头像
+	   				 $("#headPortrait").attr("src",data.personPic);
+	   				 //设置用户名
+	   				 $("#userName").text(data.name);			 
+	   			  }
+	   			})
+	       /*****************获取用户数据*begin*****************************/
+			var username = userNameObj.innerHTML;
+			//使用dom.src会获取绝对路径  dom.getAttribute()会获取相对路径
+			var picSrc = headPortObj.getAttribute('src');
+			
+			//infoHead 表示发送信息的目的 linkInfo:为了记录上线的用户  sendMsg:为了发送消息
+			var linkInfo = {
+					infoHead : "linkInfo",
+					un : username,
+					picPath : picSrc
+			}
+			socket.send(JSON.stringify(linkInfo));
+		})
+		
+		//主动给websocket服务发送消息
+		button.addEventListener("click",function(){
+			var value = input.value;
+			var username = userNameObj.innerHTML;
+			var picSrc = headPortObj.src;
+			var userInfo = {
+					infoHead : "sendMsg",
+					un : username,
+					picPath : picSrc,
+					msg : value
+			};
+			socket.send(JSON.stringify(userInfo));
+			input.value = "";
+		})
+		
+		//接受websocket返回的消息
+		socket.addEventListener("message",function(e){
+			var data = JSON.parse(e.data);
+			console.log(data);
+			if(data.infoHead == "backMsg"){
+				var panelItem = document.createElement("li");		
+				if(data.author == "system"){
+					panelItem.innerHTML = data.msg + "----" + data.time;
+					
+				}else if(data.author != userNameObj.innerHTML){
+					panelItem.innerHTML = "<div class='answHead' id='answHead' style='float:left;'><img src='"+data.picturePath+"' ></div><div class='answer' id='answer' style='float:left'>"+data.msg+"</div>";
+				}else{
+					panelItem.innerHTML = "<div class='answHead' id='answHead' style='float:right;'><img src='"+data.picturePath+"' ></div><div class='answer' id='answer' style='float:right;'>"+data.msg+"</div>";
+				}
+				
+				if(data.type === TYPE_ENTER){
+					panelItem.style.color = "green";
+				} else if(data.type === TYPE_LEAVE) {
+					panelItem.style.color = "red";		
+				}else{
+					panelItem.style.color = "blue";
+				}
+				
+				panelList.appendChild(panelItem);
+			}
+			
+			if(data.infoHead == "backUser"){
+				var userItemsObj = document.createElement("ul");
+				for(var i = 0;i < data.userLists.length;i++){
+					var userItem = document.createElement("li");
+					userItem.innerHTML = "<div class='answHead' id='answHead' style='float:left;'><img src='"+data.userLists[i][1]+"' ></div><div class='answer' id='answer' style='float:left'>"+data.userLists[i][0]+"</div>";
+					userItemsObj.appendChild(userItem);
+				}
+				userListPanel.replaceChild(userItemsObj,oldItem);
+				
+				
+			}		
+			
+		})
+		
+		//当websocket服务断开时触发
+		socket.addEventListener("close",function(){
+			
+		})
+		
+	</script>
+</body>
+</html>
